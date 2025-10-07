@@ -6,7 +6,6 @@ const result = document.getElementById("result");
 
 let detectedSkin = null;
 let faceMesh;
-let landmarks = null;
 let frameCount = 0;
 let avgR = 0, avgG = 0, avgB = 0;
 
@@ -29,20 +28,22 @@ async function initFaceMesh() {
 }
 
 async function startCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "user" },
-  });
-  video.srcObject = stream;
-  video.play();
-  video.onloadedmetadata = () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    initFaceMesh();
-    detectFrame();
-  };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    video.srcObject = stream;
+    video.play();
+    video.onloadedmetadata = () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      initFaceMesh();
+      detectFrame();
+    };
+  } catch (err) {
+    alert("Tidak dapat mengakses kamera: " + err.message);
+  }
 }
 
-// Loop deteksi
+// Loop deteksi frame
 function detectFrame() {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   if (faceMesh) faceMesh.send({ image: canvas });
@@ -53,9 +54,9 @@ function detectFrame() {
 function onFaceMeshResults(results) {
   if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
 
-  landmarks = results.multiFaceLandmarks[0];
+  const landmarks = results.multiFaceLandmarks[0];
 
-  let r = 0, g = 0, b = 0, count = 0;
+  let r = 0, g = 0, b = 0;
 
   skinPoints.forEach(idx => {
     const point = landmarks[idx];
@@ -65,14 +66,13 @@ function onFaceMeshResults(results) {
     r += pixel[0];
     g += pixel[1];
     b += pixel[2];
-    count++;
   });
 
-  r /= count;
-  g /= count;
-  b /= count;
+  r /= skinPoints.length;
+  g /= skinPoints.length;
+  b /= skinPoints.length;
 
-  // Rata-rata beberapa frame
+  // Rata-rata beberapa frame agar stabil
   avgR = (avgR * frameCount + r) / (frameCount + 1);
   avgG = (avgG * frameCount + g) / (frameCount + 1);
   avgB = (avgB * frameCount + b) / (frameCount + 1);
@@ -84,14 +84,14 @@ function onFaceMeshResults(results) {
   else if (brightness > 100) skinType = "sawo";
   else skinType = "gelap";
 
-  // Tampilkan hanya setelah frameCount >=5 agar stabil
+  // Tampilkan setelah 5 frame untuk stabilitas
   if (frameCount >= 5 && skinType !== detectedSkin) {
     detectedSkin = skinType;
     showResults(Math.round(avgR), Math.round(avgG), Math.round(avgB), skinType);
   }
 }
 
-// Tampilkan hasil deteksi
+// Fungsi menampilkan hasil
 function showResults(r, g, b, skinType) {
   let fashion = "", brand = "", makeup = "";
 
@@ -123,5 +123,5 @@ function showResults(r, g, b, skinType) {
   `;
 }
 
-// Mulai aplikasi
+// Mulai kamera & deteksi
 startCamera();
