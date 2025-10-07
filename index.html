@@ -6,62 +6,75 @@
   <title>Deteksi Warna Kulit & Outfit</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* ===== Global ===== */
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f7f7f7;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
       padding: 20px;
       margin: 0;
     }
-    h2, h3 { text-align: center; }
+    h2 { text-align: center; font-size: 2rem; margin-bottom: 20px; color: #333; }
+    h3 { color: #444; margin-bottom: 10px; }
 
-    /* ===== Video & Canvas ===== */
     video {
       display: block;
       width: 320px;
       max-width: 100%;
-      margin: 0 auto 10px auto;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+      margin: 20px auto;
+      border: 4px solid #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.2);
     }
     canvas { display: none; }
 
-    /* ===== Warna Kulit ===== */
     .color-box {
       width: 50px;
       height: 50px;
       display: inline-block;
-      margin-top: 5px;
-      border: 1px solid #000;
-      border-radius: 5px;
+      margin-top: 10px;
+      border: 2px solid #333;
+      border-radius: 8px;
     }
 
-    /* ===== Outfit Grid ===== */
+    #skinResult, #result {
+      text-align: center;
+      margin: 15px auto;
+      padding: 15px;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      max-width: 500px;
+    }
+
     .container {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-top: 20px;
+      gap: 25px;
+      margin-top: 30px;
     }
     .card {
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      padding: 15px;
+      background-color: #fff;
+      border-radius: 15px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+      padding: 20px;
       text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
     }
     .color-swatch {
       width: 40px;
       height: 40px;
       display: inline-block;
-      margin: 2px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      margin: 3px;
+      border-radius: 8px;
+      border: 2px solid #ccc;
     }
     img {
       width: 100%;
-      border-radius: 8px;
-      margin-top: 10px;
+      border-radius: 12px;
+      margin-top: 12px;
     }
   </style>
 </head>
@@ -117,7 +130,6 @@
       const pixelCount = data.length/4;
       r = r/pixelCount; g = g/pixelCount; b = b/pixelCount;
 
-      // Tentukan warna kulit berdasarkan rasio RGB
       let skinType;
       if(r>g && g>b && r/g<1.3 && g/b>1.2){ skinType="sawo"; }
       else if(r>g && g>b && r/g>1.3){ skinType="terang"; }
