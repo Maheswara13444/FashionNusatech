@@ -1,99 +1,70 @@
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
 const skinResult = document.getElementById("skinResult");
 const result = document.getElementById("result");
 
 let detectedSkin = null;
-let faceMesh;
-let frameCount = 0;
-let avgR = 0, avgG = 0, avgB = 0;
 
-// Landmark aman untuk sampling kulit (pipi & dahi)
-const skinPoints = [10, 338, 297, 332, 284, 251, 389, 356];
-
-async function initFaceMesh() {
-  faceMesh = new FaceMesh.FaceMesh({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-  });
-
-  faceMesh.setOptions({
-    maxNumFaces: 1,
-    refineLandmarks: true,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5,
-  });
-
-  faceMesh.onResults(onFaceMeshResults);
-}
-
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+// Aktifkan kamera
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
     video.srcObject = stream;
-    video.play();
-    video.onloadedmetadata = () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      initFaceMesh();
-      detectFrame();
-    };
-  } catch (err) {
-    alert("Tidak dapat mengakses kamera: " + err.message);
-  }
+    startAutoDetection();
+  })
+  .catch(error => {
+    alert("Tidak dapat mengakses kamera: " + error.message);
+  });
+
+// Fungsi utama: deteksi otomatis setiap 2 detik
+function startAutoDetection() {
+  setInterval(() => {
+    detectSkin();
+  }, 2000);
 }
 
-// Loop deteksi frame
-function detectFrame() {
+function detectSkin() {
+  const ctx = canvas.getContext("2d");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  if (faceMesh) faceMesh.send({ image: canvas });
-  requestAnimationFrame(detectFrame);
-}
 
-// Callback hasil Face Mesh
-function onFaceMeshResults(results) {
-  if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
-
-  const landmarks = results.multiFaceLandmarks[0];
+  // Ambil area kecil dari tengah wajah (anggap tengah video = wajah user)
+  const frame = ctx.getImageData(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
+  const data = frame.data;
 
   let r = 0, g = 0, b = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+  }
 
-  skinPoints.forEach(idx => {
-    const point = landmarks[idx];
-    const x = Math.floor(point.x * canvas.width);
-    const y = Math.floor(point.y * canvas.height);
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
-    r += pixel[0];
-    g += pixel[1];
-    b += pixel[2];
-  });
+  const pixelCount = data.length / 4;
+  r = Math.round(r / pixelCount);
+  g = Math.round(g / pixelCount);
+  b = Math.round(b / pixelCount);
 
-  r /= skinPoints.length;
-  g /= skinPoints.length;
-  b /= skinPoints.length;
-
-  // Rata-rata beberapa frame agar stabil
-  avgR = (avgR * frameCount + r) / (frameCount + 1);
-  avgG = (avgG * frameCount + g) / (frameCount + 1);
-  avgB = (avgB * frameCount + b) / (frameCount + 1);
-  frameCount++;
-
-  const brightness = (avgR + avgG + avgB) / 3;
+  // Tentukan warna kulit berdasarkan rata-rata RGB
   let skinType;
-  if (brightness > 200) skinType = "terang";
-  else if (brightness > 100) skinType = "sawo";
-  else skinType = "gelap";
+  if (r > 200 && g > 170 && b > 150) {
+    skinType = "terang";
+  } else if (r > 140 && g > 100 && b < 80) {
+    skinType = "sawo";
+  } else {
+    skinType = "gelap";
+  }
 
-  // Tampilkan setelah 5 frame untuk stabilitas
-  if (frameCount >= 5 && skinType !== detectedSkin) {
+  // Jika berubah, tampilkan hasil baru
+  if (skinType !== detectedSkin) {
     detectedSkin = skinType;
-    showResults(Math.round(avgR), Math.round(avgG), Math.round(avgB), skinType);
+    showResults(r, g, b, skinType);
   }
 }
 
-// Fungsi menampilkan hasil
 function showResults(r, g, b, skinType) {
-  let fashion = "", brand = "", makeup = "";
+  let fashion = "";
+  let brand = "";
+  let makeup = "";
 
   if (skinType === "terang") {
     makeup = "Gunakan tone hangat seperti peach atau coral untuk kesan segar.";
@@ -122,6 +93,3 @@ function showResults(r, g, b, skinType) {
     <p><b>Makeup:</b> ${makeup}</p>
   `;
 }
-
-// Mulai kamera & deteksi
-startCamera();
