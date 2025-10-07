@@ -10,7 +10,9 @@ let landmarks = null;
 let frameCount = 0;
 let avgR = 0, avgG = 0, avgB = 0;
 
-// Inisialisasi MediaPipe Face Mesh
+// Landmark aman untuk sampling kulit (pipi & dahi)
+const skinPoints = [10, 338, 297, 332, 284, 251, 389, 356];
+
 async function initFaceMesh() {
   faceMesh = new FaceMesh.FaceMesh({
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
@@ -26,7 +28,6 @@ async function initFaceMesh() {
   faceMesh.onResults(onFaceMeshResults);
 }
 
-// Mulai kamera
 async function startCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: "user" },
@@ -41,30 +42,25 @@ async function startCamera() {
   };
 }
 
-// Deteksi frame
+// Loop deteksi
 function detectFrame() {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  faceMesh.send({ image: canvas });
+  if (faceMesh) faceMesh.send({ image: canvas });
   requestAnimationFrame(detectFrame);
 }
 
-// Callback saat face mesh mendeteksi wajah
+// Callback hasil Face Mesh
 function onFaceMeshResults(results) {
   if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
 
   landmarks = results.multiFaceLandmarks[0];
 
-  // Ambil warna kulit dari area tertentu
-  const areas = [
-    [33, 133], [263, 362], [1, 61], [291, 417], [199, 429], [5, 285], [249, 354], [152, 389]
-  ];
-
   let r = 0, g = 0, b = 0, count = 0;
-  areas.forEach(([startIdx, endIdx]) => {
-    const start = landmarks[startIdx];
-    const end = landmarks[endIdx];
-    const x = Math.floor((start.x + end.x) / 2 * canvas.width);
-    const y = Math.floor((start.y + end.y) / 2 * canvas.height);
+
+  skinPoints.forEach(idx => {
+    const point = landmarks[idx];
+    const x = Math.floor(point.x * canvas.width);
+    const y = Math.floor(point.y * canvas.height);
     const pixel = ctx.getImageData(x, y, 1, 1).data;
     r += pixel[0];
     g += pixel[1];
@@ -72,29 +68,24 @@ function onFaceMeshResults(results) {
     count++;
   });
 
-  r = r / count;
-  g = g / count;
-  b = b / count;
+  r /= count;
+  g /= count;
+  b /= count;
 
-  // Hitung rata-rata warna dari beberapa frame
+  // Rata-rata beberapa frame
   avgR = (avgR * frameCount + r) / (frameCount + 1);
   avgG = (avgG * frameCount + g) / (frameCount + 1);
   avgB = (avgB * frameCount + b) / (frameCount + 1);
   frameCount++;
 
-  // Tentukan jenis warna kulit
   const brightness = (avgR + avgG + avgB) / 3;
   let skinType;
-  if (brightness > 200) {
-    skinType = "terang";
-  } else if (brightness > 100) {
-    skinType = "sawo";
-  } else {
-    skinType = "gelap";
-  }
+  if (brightness > 200) skinType = "terang";
+  else if (brightness > 100) skinType = "sawo";
+  else skinType = "gelap";
 
-  // Tampilkan hasil jika berubah
-  if (skinType !== detectedSkin) {
+  // Tampilkan hanya setelah frameCount >=5 agar stabil
+  if (frameCount >= 5 && skinType !== detectedSkin) {
     detectedSkin = skinType;
     showResults(Math.round(avgR), Math.round(avgG), Math.round(avgB), skinType);
   }
