@@ -1,104 +1,114 @@
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 const skinResult = document.getElementById("skinResult");
 const result = document.getElementById("result");
 
 let detectedSkin = null;
+let faceMesh;
+let landmarks = null;
+let frameCount = 0;
+let avgR = 0, avgG = 0, avgB = 0;
 
-// 🧩 Cek dukungan kamera
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-  alert("Browser kamu tidak mendukung akses kamera.");
-} else {
-  startCamera();
-}
-
-function startCamera() {
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-    .then(stream => {
-      video.srcObject = stream;
-      video.play();
-      video.onloadedmetadata = () => setTimeout(startAutoDetection, 1500);
-    })
-    .catch(err => alert("Tidak dapat mengakses kamera: " + err.message));
-}
-
-function startAutoDetection() {
-  setInterval(detectSkin, 2000);
-}
-
-function detectSkin() {
-  const ctx = canvas.getContext("2d");
-  if (video.videoWidth === 0 || video.videoHeight === 0) return;
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  // Ambil beberapa area tengah wajah
-  const areas = [
-    {x: canvas.width/2 - 50, y: canvas.height/2 - 50, w: 100, h: 100},
-    {x: canvas.width/2 - 30, y: canvas.height/2 - 80, w: 60, h: 60},
-    {x: canvas.width/2 - 40, y: canvas.height/2 - 20, w: 80, h: 80}
-  ];
-
-  let totalR = 0, totalG = 0, totalB = 0, count = 0;
-
-  areas.forEach(a => {
-    const frame = ctx.getImageData(a.x, a.y, a.w, a.h);
-    const data = frame.data;
-    for (let i = 0; i < data.length; i += 4) {
-      totalR += data[i];
-      totalG += data[i+1];
-      totalB += data[i+2];
-      count++;
-    }
+// Inisialisasi MediaPipe Face Mesh
+async function initFaceMesh() {
+  faceMesh = new FaceMesh.FaceMesh({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
   });
 
-  let r = totalR / count;
-  let g = totalG / count;
-  let b = totalB / count;
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
 
-  // Konversi RGB ke HSV
-  const [h, s, v] = rgbToHsv(r, g, b);
+  faceMesh.onResults(onFaceMeshResults);
+}
 
+// Mulai kamera
+async function startCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user" },
+  });
+  video.srcObject = stream;
+  video.play();
+  video.onloadedmetadata = () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    initFaceMesh();
+    detectFrame();
+  };
+}
+
+// Deteksi frame
+function detectFrame() {
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  faceMesh.send({ image: canvas });
+  requestAnimationFrame(detectFrame);
+}
+
+// Callback saat face mesh mendeteksi wajah
+function onFaceMeshResults(results) {
+  if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
+
+  landmarks = results.multiFaceLandmarks[0];
+
+  // Ambil warna kulit dari area tertentu
+  const areas = [
+    [33, 133], [263, 362], [1, 61], [291, 417], [199, 429], [5, 285], [249, 354], [152, 389]
+  ];
+
+  let r = 0, g = 0, b = 0, count = 0;
+  areas.forEach(([startIdx, endIdx]) => {
+    const start = landmarks[startIdx];
+    const end = landmarks[endIdx];
+    const x = Math.floor((start.x + end.x) / 2 * canvas.width);
+    const y = Math.floor((start.y + end.y) / 2 * canvas.height);
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    r += pixel[0];
+    g += pixel[1];
+    b += pixel[2];
+    count++;
+  });
+
+  r = r / count;
+  g = g / count;
+  b = b / count;
+
+  // Hitung rata-rata warna dari beberapa frame
+  avgR = (avgR * frameCount + r) / (frameCount + 1);
+  avgG = (avgG * frameCount + g) / (frameCount + 1);
+  avgB = (avgB * frameCount + b) / (frameCount + 1);
+  frameCount++;
+
+  // Tentukan jenis warna kulit
+  const brightness = (avgR + avgG + avgB) / 3;
   let skinType;
-  if (v > 0.7 && s < 0.4) skinType = "terang";     
-  else if (v > 0.4 && v <= 0.7 && s >= 0.2) skinType = "sawo";
-  else skinType = "gelap";
+  if (brightness > 200) {
+    skinType = "terang";
+  } else if (brightness > 100) {
+    skinType = "sawo";
+  } else {
+    skinType = "gelap";
+  }
 
+  // Tampilkan hasil jika berubah
   if (skinType !== detectedSkin) {
     detectedSkin = skinType;
-    showResults(Math.round(r), Math.round(g), Math.round(b), skinType);
+    showResults(Math.round(avgR), Math.round(avgG), Math.round(avgB), skinType);
   }
 }
 
-function rgbToHsv(r, g, b) {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r,g,b), min = Math.min(r,g,b);
-  let h, s, v = max;
-  const d = max - min;
-  s = max === 0 ? 0 : d / max;
-
-  if(d === 0) h = 0;
-  else {
-    switch(max) {
-      case r: h = (g - b)/d + (g < b ? 6 : 0); break;
-      case g: h = (b - r)/d + 2; break;
-      case b: h = (r - g)/d + 4; break;
-    }
-    h /= 6;
-  }
-  return [h*360, s, v];
-}
-
+// Tampilkan hasil deteksi
 function showResults(r, g, b, skinType) {
-  let fashion="", brand="", makeup="";
+  let fashion = "", brand = "", makeup = "";
 
-  if(skinType === "terang"){
+  if (skinType === "terang") {
     makeup = "Gunakan tone hangat seperti peach atau coral untuk kesan segar.";
     fashion = "Coba warna pastel dan lembut, cocok untuk tampil feminin.";
     brand = "Cocok dengan brand seperti Uniqlo atau H&M.";
-  } else if(skinType === "sawo"){
+  } else if (skinType === "sawo") {
     makeup = "Gunakan warna natural seperti nude atau gold.";
     fashion = "Coba warna earthy seperti coklat, olive, dan beige.";
     brand = "Cocok dengan brand seperti Zara atau Pull & Bear.";
@@ -121,3 +131,6 @@ function showResults(r, g, b, skinType) {
     <p><b>Makeup:</b> ${makeup}</p>
   `;
 }
+
+// Mulai aplikasi
+startCamera();
