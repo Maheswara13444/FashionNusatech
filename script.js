@@ -5,30 +5,52 @@ const result = document.getElementById("result");
 
 let detectedSkin = null;
 
-// Aktifkan kamera
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => {
-    video.srcObject = stream;
-    startAutoDetection();
-  })
-  .catch(error => {
-    alert("Tidak dapat mengakses kamera: " + error.message);
-  });
+// 🧩 Cek dukungan kamera
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  alert("Browser kamu tidak mendukung akses kamera.");
+} else {
+  startCamera();
+}
 
-// Fungsi utama: deteksi otomatis setiap 2 detik
+function startCamera() {
+  navigator.mediaDevices
+    .getUserMedia({
+      video: {
+        facingMode: "user" // gunakan kamera depan di HP
+      },
+    })
+    .then(stream => {
+      video.srcObject = stream;
+      video.play();
+
+      // Safari butuh sedikit delay agar video siap
+      video.onloadedmetadata = () => {
+        setTimeout(startAutoDetection, 1500);
+      };
+    })
+    .catch(error => {
+      alert("Tidak dapat mengakses kamera: " + error.message);
+    });
+}
+
+// 🔁 Deteksi otomatis setiap 2 detik
 function startAutoDetection() {
-  setInterval(() => {
-    detectSkin();
-  }, 2000);
+  setInterval(() => detectSkin(), 2000);
 }
 
 function detectSkin() {
   const ctx = canvas.getContext("2d");
+
+  // Pastikan video sudah aktif
+  if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
+
+  // Gambar frame video ke canvas
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // Ambil area kecil dari tengah wajah (anggap tengah video = wajah user)
+  // Ambil area tengah (anggap wajah berada di tengah)
   const frame = ctx.getImageData(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
   const data = frame.data;
 
@@ -40,24 +62,30 @@ function detectSkin() {
   }
 
   const pixelCount = data.length / 4;
-  r = Math.round(r / pixelCount);
-  g = Math.round(g / pixelCount);
-  b = Math.round(b / pixelCount);
+  r = r / pixelCount;
+  g = g / pixelCount;
+  b = b / pixelCount;
 
-  // Tentukan warna kulit berdasarkan rata-rata RGB
+  // 🌈 Normalisasi warna berdasarkan kecerahan (agar tidak salah karena pencahayaan)
+  const brightness = (r + g + b) / 3;
+  const normR = (r / brightness) * 128;
+  const normG = (g / brightness) * 128;
+  const normB = (b / brightness) * 128;
+
+  // 🎯 Tentukan warna kulit berdasar rasio warna, bukan kecerahan mentah
   let skinType;
-  if (r > 200 && g > 170 && b > 150) {
+  if (normR > 150 && normG > 140) {
     skinType = "terang";
-  } else if (r > 140 && g > 100 && b < 80) {
+  } else if (normR > normG + 10 && normB < normR - 20) {
     skinType = "sawo";
   } else {
     skinType = "gelap";
   }
 
-  // Jika berubah, tampilkan hasil baru
+  // Jika hasil baru berbeda, tampilkan hasil
   if (skinType !== detectedSkin) {
     detectedSkin = skinType;
-    showResults(r, g, b, skinType);
+    showResults(Math.round(r), Math.round(g), Math.round(b), skinType);
   }
 }
 
