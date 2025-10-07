@@ -13,92 +13,92 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 }
 
 function startCamera() {
-  navigator.mediaDevices
-    .getUserMedia({
-      video: {
-        facingMode: "user" // gunakan kamera depan di HP
-      },
-    })
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
     .then(stream => {
       video.srcObject = stream;
       video.play();
-
-      // Safari butuh sedikit delay agar video siap
-      video.onloadedmetadata = () => {
-        setTimeout(startAutoDetection, 1500);
-      };
+      video.onloadedmetadata = () => setTimeout(startAutoDetection, 1500);
     })
-    .catch(error => {
-      alert("Tidak dapat mengakses kamera: " + error.message);
-    });
+    .catch(err => alert("Tidak dapat mengakses kamera: " + err.message));
 }
 
-// 🔁 Deteksi otomatis setiap 2 detik
 function startAutoDetection() {
-  setInterval(() => detectSkin(), 2000);
+  setInterval(detectSkin, 2000);
 }
 
 function detectSkin() {
   const ctx = canvas.getContext("2d");
-
-  // Pastikan video sudah aktif
   if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-
-  // Gambar frame video ke canvas
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // Ambil area tengah (anggap wajah berada di tengah)
-  const frame = ctx.getImageData(canvas.width / 2 - 50, canvas.height / 2 - 50, 100, 100);
-  const data = frame.data;
+  // Ambil beberapa area tengah wajah
+  const areas = [
+    {x: canvas.width/2 - 50, y: canvas.height/2 - 50, w: 100, h: 100},
+    {x: canvas.width/2 - 30, y: canvas.height/2 - 80, w: 60, h: 60},
+    {x: canvas.width/2 - 40, y: canvas.height/2 - 20, w: 80, h: 80}
+  ];
 
-  let r = 0, g = 0, b = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    r += data[i];
-    g += data[i + 1];
-    b += data[i + 2];
-  }
+  let totalR = 0, totalG = 0, totalB = 0, count = 0;
 
-  const pixelCount = data.length / 4;
-  r = r / pixelCount;
-  g = g / pixelCount;
-  b = b / pixelCount;
+  areas.forEach(a => {
+    const frame = ctx.getImageData(a.x, a.y, a.w, a.h);
+    const data = frame.data;
+    for (let i = 0; i < data.length; i += 4) {
+      totalR += data[i];
+      totalG += data[i+1];
+      totalB += data[i+2];
+      count++;
+    }
+  });
 
-  // 🌈 Normalisasi warna berdasarkan kecerahan (agar tidak salah karena pencahayaan)
-  const brightness = (r + g + b) / 3;
-  const normR = (r / brightness) * 128;
-  const normG = (g / brightness) * 128;
-  const normB = (b / brightness) * 128;
+  let r = totalR / count;
+  let g = totalG / count;
+  let b = totalB / count;
 
-  // 🎯 Tentukan warna kulit berdasar rasio warna, bukan kecerahan mentah
+  // Konversi RGB ke HSV
+  const [h, s, v] = rgbToHsv(r, g, b);
+
   let skinType;
-  if (normR > 150 && normG > 140) {
-    skinType = "terang";
-  } else if (normR > normG + 10 && normB < normR - 20) {
-    skinType = "sawo";
-  } else {
-    skinType = "gelap";
-  }
+  if (v > 0.7 && s < 0.4) skinType = "terang";     
+  else if (v > 0.4 && v <= 0.7 && s >= 0.2) skinType = "sawo";
+  else skinType = "gelap";
 
-  // Jika hasil baru berbeda, tampilkan hasil
   if (skinType !== detectedSkin) {
     detectedSkin = skinType;
     showResults(Math.round(r), Math.round(g), Math.round(b), skinType);
   }
 }
 
-function showResults(r, g, b, skinType) {
-  let fashion = "";
-  let brand = "";
-  let makeup = "";
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, v = max;
+  const d = max - min;
+  s = max === 0 ? 0 : d / max;
 
-  if (skinType === "terang") {
+  if(d === 0) h = 0;
+  else {
+    switch(max) {
+      case r: h = (g - b)/d + (g < b ? 6 : 0); break;
+      case g: h = (b - r)/d + 2; break;
+      case b: h = (r - g)/d + 4; break;
+    }
+    h /= 6;
+  }
+  return [h*360, s, v];
+}
+
+function showResults(r, g, b, skinType) {
+  let fashion="", brand="", makeup="";
+
+  if(skinType === "terang"){
     makeup = "Gunakan tone hangat seperti peach atau coral untuk kesan segar.";
     fashion = "Coba warna pastel dan lembut, cocok untuk tampil feminin.";
     brand = "Cocok dengan brand seperti Uniqlo atau H&M.";
-  } else if (skinType === "sawo") {
+  } else if(skinType === "sawo"){
     makeup = "Gunakan warna natural seperti nude atau gold.";
     fashion = "Coba warna earthy seperti coklat, olive, dan beige.";
     brand = "Cocok dengan brand seperti Zara atau Pull & Bear.";
