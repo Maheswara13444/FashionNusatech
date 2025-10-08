@@ -1,45 +1,122 @@
 body {
   font-family: 'Poppins', sans-serif;
-  background-color: #0f172a;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 30px;
+  background-color: #fff8fa;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+header {
   text-align: center;
+  padding: 40px 20px 20px;
+  background: linear-gradient(to right, #ffe6eb, #ffd6e0);
+  border-bottom: 3px solid #f9b5c6;
 }
 
 h1 {
-  color: #38bdf8;
+  font-size: 2.3rem;
+  color: #d6336c;
+  margin: 0;
+}
+
+.subtitle {
+  color: #555;
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.scanner-card {
+  max-width: 700px;
+  margin: 30px auto;
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  padding: 20px;
+}
+
+.camera-container {
+  display: flex;
+  justify-content: center;
   margin-bottom: 20px;
 }
 
-.card {
-  background-color: #1e293b;
-  padding: 25px;
-  border-radius: 15px;
-  width: 90%;
-  max-width: 420px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.3);
-}
-
 video {
-  width: 100%;
-  border-radius: 10px;
-  background-color: black;
+  width: 320px;
+  border-radius: 12px;
+  border: 2px solid #f9b5c6;
 }
 
-#skinResult, #result {
-  margin-top: 20px;
-  background-color: #334155;
+.result-container {
+  text-align: center;
+}
+
+.result-box {
+  background: #fff0f5;
+  margin: 15px auto;
   padding: 15px;
-  border-radius: 10px;
+  border-radius: 12px;
+  width: 90%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .color-box {
   width: 60px;
   height: 60px;
-  border-radius: 50%;
   margin: 10px auto;
+  border-radius: 8px;
   border: 2px solid #fff;
+}
+
+.skin-type {
+  font-size: 1.3rem;
+  color: #d6336c;
+}
+
+.outfit-section {
+  max-width: 1000px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 25px;
+  margin-top: 25px;
+}
+
+.outfit-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.outfit-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.12);
+}
+
+.color-swatch {
+  width: 35px;
+  height: 35px;
+  display: inline-block;
+  margin: 3px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+img {
+  width: 100%;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+footer {
+  text-align: center;
+  padding: 15px;
+  font-size: 0.9rem;
+  background: #ffe6eb;
+  color: #555;
 }
