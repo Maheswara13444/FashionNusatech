@@ -3,27 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Fashion Advisor</title>
+  <title>Smart Fashion Advisor - Sociolla Style</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>💄 Smart Fashion Advisor</h1>
+  <header>
+    <h1>💄 Smart Fashion Advisor</h1>
+    <p class="subtitle">Temukan gaya dan warna yang paling cocok dengan warna kulitmu 💋</p>
+  </header>
 
-  <div class="card">
-    <div class="camera-container">
-      <video id="video" autoplay></video>
-      <canvas id="canvas" style="display:none;"></canvas>
+  <main>
+    <div class="scanner-card">
+      <div class="camera-container">
+        <video id="video" autoplay></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+      </div>
+
+      <div class="result-container">
+        <div id="skinResult" class="result-box"></div>
+        <div id="result" class="result-box"></div>
+      </div>
     </div>
 
-    <div id="skinResult"></div>
-    <div id="result"></div>
-  </div>
+    <!-- Section Outfit -->
+    <section id="outfitSection" class="outfit-section" style="display:none;">
+      <h2>👗 Inspirasi Outfit Sesuai Warna Kulit</h2>
+      <div class="container" id="outfitContainer"></div>
+    </section>
+  </main>
 
-  <!-- Section Outfit -->
-  <div id="outfitSection" style="display:none;">
-    <h2>👗 Contoh Outfit Sesuai Warna Kulit</h2>
-    <div class="container" id="outfitContainer"></div>
-  </div>
+  <footer>
+    <p>© 2025 Smart Fashion Advisor | Inspired by Sociolla Beauty</p>
+  </footer>
 
   <script>
     const video = document.getElementById("video");
@@ -80,22 +92,22 @@
     function showResults(r,g,b,skinType){
       let fashion="", brand="", makeup="";
       if(skinType==="terang"){
-        makeup="Tone hangat peach/coral.";
-        fashion="Warna pastel/soft.";
-        brand="Uniqlo/H&M.";
+        makeup="Tone hangat peach atau coral untuk kesan segar.";
+        fashion="Warna pastel, putih, atau beige cocok untuk tampilan lembut.";
+        brand="Coba gaya dari Uniqlo atau H&M.";
       } else if(skinType==="sawo"){
-        makeup="Natural nude/gold.";
-        fashion="Earthy coklat/olive/beige.";
-        brand="Zara/Pull & Bear.";
+        makeup="Natural nude dan gold akan menonjolkan kecantikan alami.";
+        fashion="Warna earthy seperti coklat, olive, atau mustard.";
+        brand="Zara dan Pull & Bear cocok untukmu.";
       } else {
-        makeup="Bold merah maroon/bronze.";
-        fashion="Kontras putih/merah.";
-        brand="Cotton On/Marks & Spencer.";
+        makeup="Gunakan warna bold seperti merah maroon atau bronze.";
+        fashion="Warna cerah seperti putih dan kuning sangat menonjol.";
+        brand="Coba Cotton On atau Marks & Spencer.";
       }
 
       skinResult.innerHTML = `
         <h3>🎨 Warna Kulit Terdeteksi:</h3>
-        <p><b>${skinType.toUpperCase()}</b></p>
+        <p class="skin-type">${skinType.toUpperCase()}</p>
         <div class="color-box" style="background-color: rgb(${r},${g},${b});"></div>
       `;
 
@@ -114,25 +126,30 @@
       let outfits = [];
       if(skinType==="terang"){
         outfits = [
-          {colors:["#FFD1DC","#B0E0E6","#FFFACD"], img:"https://images.unsplash.com/photo-1593032465172-3d5f4e9c3ff2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400"}
+          {colors:["#FFD1DC","#B0E0E6","#FFFACD"], img:"https://images.unsplash.com/photo-1613553507747-5f8f0e6b5a3b?w=500"},
+          {colors:["#FBE0DC","#D6E6F2","#FFF5E1"], img:"https://images.unsplash.com/photo-1551022372-0bdac482b9d5?w=500"}
         ];
       } else if(skinType==="sawo"){
         outfits = [
-          {colors:["#C68642","#808000","#F5DEB3"], img:"https://images.unsplash.com/photo-1541099649105-f69ad21f3246?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400"}
+          {colors:["#C68642","#808000","#F5DEB3"], img:"https://images.unsplash.com/photo-1542060748-10c28b62716b?w=500"},
+          {colors:["#A0522D","#8B4513","#B8860B"], img:"https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=500"}
         ];
       } else {
         outfits = [
-          {colors:["#FFFFFF","#FF0000","#FFD700"], img:"https://images.unsplash.com/photo-1600185365869-0c18e1e5cf71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400"}
+          {colors:["#FFFFFF","#FF0000","#FFD700"], img:"https://images.unsplash.com/photo-1600185365869-0c18e1e5cf71?w=500"},
+          {colors:["#FF6347","#FFF8DC","#8B0000"], img:"https://images.unsplash.com/photo-1584467735815-f6a7dcf1f74a?w=500"}
         ];
       }
 
       outfits.forEach(o=>{
         let div = document.createElement("div");
-        div.className="card";
-        div.innerHTML = `<h3>${skinType.toUpperCase()}</h3>
-                         <p>Warna outfit:</p>
-                         ${o.colors.map(c=>`<div class="color-swatch" style="background-color:${c}"></div>`).join("")}
-                         <img src="${o.img}" alt="Outfit ${skinType}">`;
+        div.className="card outfit-card";
+        div.innerHTML = `
+          <h3>${skinType.toUpperCase()}</h3>
+          <p>Warna outfit:</p>
+          ${o.colors.map(c=>`<div class="color-swatch" style="background-color:${c}"></div>`).join("")}
+          <img src="${o.img}" alt="Outfit ${skinType}">
+        `;
         outfitContainer.appendChild(div);
       });
     }
